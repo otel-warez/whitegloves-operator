@@ -23,6 +23,8 @@ spec:
               value: gameboysuits:dev
             - name: KUBERNETES_MASTER
               value: kube-apiserver-kind-control-plane
+            - name: RELATED_IMAGE_AUTO_INSTRUMENTATION_OTEL_COLLECTOR_ENDPOINT
+              value: http://collector.default.svc:4318
           ports:
             - containerPort: 9443
               name: webhook-server
@@ -42,10 +44,7 @@ rules:
   - apiGroups: [""]
     resources:
       - configmaps
-      - persistentvolumeclaims
-      - persistentvolumes
       - pods
-      - serviceaccounts
       - services
       - namespaces
     verbs: ["get", "watch", "list"]
@@ -56,29 +55,6 @@ rules:
       - statefulsets
       - replicasets
     verbs: ["get", "watch", "list"]
-  - apiGroups: [ "autoscaling" ]
-    resources:
-      - horizontalpodautoscalers
-    verbs: [ "get", "watch", "list" ]
-  - apiGroups: [ "policy" ]
-    resources:
-      - poddisruptionbudgets
-    verbs: [ "get", "watch", "list" ]
-  - apiGroups: ["networking.k8s.io"]
-    resources:
-      - ingresses
-    verbs: [ "get", "watch", "list" ]
-  - apiGroups: ["opentelemetry.io"]
-    resources:
-      - instrumentations
-      - opentelemetrycollectors
-      - opampbridges
-    verbs:
-      - get
-      - list
-      - patch
-      - update
-      - watch
 ---
 apiVersion: v1
 kind: ServiceAccount
@@ -127,7 +103,7 @@ webhooks:
         namespace: default
         path: /mutate-v1-pod
         port: 443
-    failurePolicy: Fail
+    failurePolicy: Ignore
     name: mpod.kb.io
     rules:
       - apiGroups:

@@ -40,7 +40,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/webhook"
 	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 
-	otelv1alpha1 "github.com/otel-warez/whitegloves-operator/apis/v1alpha1"
 	"github.com/otel-warez/whitegloves-operator/internal/config"
 	"github.com/otel-warez/whitegloves-operator/internal/constants"
 	"github.com/otel-warez/whitegloves-operator/internal/instrumentation"
@@ -298,11 +297,6 @@ func main() {
 	}
 
 	if os.Getenv("ENABLE_WEBHOOKS") != "false" {
-
-		if err = otelv1alpha1.SetupInstrumentationWebhook(mgr, cfg); err != nil {
-			setupLog.Error(err, "unable to create webhook", "webhook", "Instrumentation")
-			os.Exit(1)
-		}
 		decoder := admission.NewDecoder(mgr.GetScheme())
 		mgr.GetWebhookServer().Register("/mutate-v1-pod", &webhook.Admission{
 			Handler: podmutation.NewWebhookHandler(cfg, ctrl.Log.WithName("pod-webhook"), decoder, mgr.GetClient(),
