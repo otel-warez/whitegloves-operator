@@ -14,16 +14,16 @@ jobs:
       - uses: actions/checkout@v4
       - name: make our image
         run: make container
-      - name: pull the java image
-        run: |
-          docker pull ghcr.io/otel-warez/gameboysuits:latest
-          docker tag ghcr.io/otel-warez/gameboysuits:latest gameboysuits:dev
-          kind load docker-image gameboysuits:dev --name kind
       - name: Create kind cluster
         uses: helm/kind-action@v1.11.0
         with:
           cluster_name: kind
           node_image: kindest/node:v1.27.3
+      - name: pull the java image
+        run: |
+          docker pull ghcr.io/otel-warez/gameboysuits:latest
+          docker tag ghcr.io/otel-warez/gameboysuits:latest gameboysuits:dev
+          kind load docker-image gameboysuits:dev --name kind
       - name: Deploy certificate signing request
         run: kubectl apply -f test/certs.yaml
       - name: Approve our certificate signing request
