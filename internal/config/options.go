@@ -25,25 +25,26 @@ import (
 type Option func(c *options)
 
 type options struct {
-	version                             version.Version
-	logger                              logr.Logger
-	autoInstrumentationDotNetImage      string
-	autoInstrumentationGoImage          string
-	autoInstrumentationJavaImage        string
-	autoInstrumentationNodeJSImage      string
-	autoInstrumentationPythonImage      string
-	autoInstrumentationApacheHttpdImage string
-	autoInstrumentationNginxImage       string
-	enableMultiInstrumentation          bool
-	enableApacheHttpdInstrumentation    bool
-	enableDotNetInstrumentation         bool
-	enableGoInstrumentation             bool
-	enableNginxInstrumentation          bool
-	enablePythonInstrumentation         bool
-	enableNodeJSInstrumentation         bool
-	enableJavaInstrumentation           bool
-	labelsFilter                        []string
-	annotationsFilter                   []string
+	version                                  version.Version
+	logger                                   logr.Logger
+	autoInstrumentationDotNetImage           string
+	autoInstrumentationGoImage               string
+	autoInstrumentationJavaImage             string
+	autoInstrumentationNodeJSImage           string
+	autoInstrumentationPythonImage           string
+	autoInstrumentationApacheHttpdImage      string
+	autoInstrumentationNginxImage            string
+	autoInstrumentationOtelCollectorEndpoint string
+	enableMultiInstrumentation               bool
+	enableApacheHttpdInstrumentation         bool
+	enableDotNetInstrumentation              bool
+	enableGoInstrumentation                  bool
+	enableNginxInstrumentation               bool
+	enablePythonInstrumentation              bool
+	enableNodeJSInstrumentation              bool
+	enableJavaInstrumentation                bool
+	labelsFilter                             []string
+	annotationsFilter                        []string
 }
 
 func WithEnableMultiInstrumentation(s bool) Option {
@@ -103,6 +104,11 @@ func WithAutoInstrumentationJavaImage(s string) Option {
 	}
 }
 
+func WithAutoInstrumentationOtelCollectorEndpoint(s string) Option {
+	return func(o *options) {
+		o.autoInstrumentationOtelCollectorEndpoint = s
+	}
+}
 func WithAutoInstrumentationNodeJSImage(s string) Option {
 	return func(o *options) {
 		o.autoInstrumentationNodeJSImage = s

@@ -24,24 +24,25 @@ import (
 
 // Config holds the static configuration for this operator.
 type Config struct {
-	logger                              logr.Logger
-	autoInstrumentationPythonImage      string
-	enableMultiInstrumentation          bool
-	enableApacheHttpdInstrumentation    bool
-	enableDotNetInstrumentation         bool
-	enableGoInstrumentation             bool
-	enableNginxInstrumentation          bool
-	enablePythonInstrumentation         bool
-	enableNodeJSInstrumentation         bool
-	enableJavaInstrumentation           bool
-	autoInstrumentationDotNetImage      string
-	autoInstrumentationGoImage          string
-	autoInstrumentationApacheHttpdImage string
-	autoInstrumentationNginxImage       string
-	targetAllocatorConfigMapEntry       string
-	operatorOpAMPBridgeConfigMapEntry   string
-	autoInstrumentationNodeJSImage      string
-	autoInstrumentationJavaImage        string
+	logger                                   logr.Logger
+	autoInstrumentationPythonImage           string
+	enableMultiInstrumentation               bool
+	enableApacheHttpdInstrumentation         bool
+	enableDotNetInstrumentation              bool
+	enableGoInstrumentation                  bool
+	enableNginxInstrumentation               bool
+	enablePythonInstrumentation              bool
+	enableNodeJSInstrumentation              bool
+	enableJavaInstrumentation                bool
+	autoInstrumentationDotNetImage           string
+	autoInstrumentationGoImage               string
+	autoInstrumentationApacheHttpdImage      string
+	autoInstrumentationNginxImage            string
+	targetAllocatorConfigMapEntry            string
+	operatorOpAMPBridgeConfigMapEntry        string
+	autoInstrumentationNodeJSImage           string
+	autoInstrumentationJavaImage             string
+	autoInstrumentationOtelCollectorEndpoint string
 
 	labelsFilter      []string
 	annotationsFilter []string
@@ -62,24 +63,25 @@ func New(opts ...Option) Config {
 	}
 
 	return Config{
-		enableMultiInstrumentation:          o.enableMultiInstrumentation,
-		enableApacheHttpdInstrumentation:    o.enableApacheHttpdInstrumentation,
-		enableDotNetInstrumentation:         o.enableDotNetInstrumentation,
-		enableGoInstrumentation:             o.enableGoInstrumentation,
-		enableNginxInstrumentation:          o.enableNginxInstrumentation,
-		enablePythonInstrumentation:         o.enablePythonInstrumentation,
-		enableNodeJSInstrumentation:         o.enableNodeJSInstrumentation,
-		enableJavaInstrumentation:           o.enableJavaInstrumentation,
-		logger:                              o.logger,
-		autoInstrumentationJavaImage:        o.autoInstrumentationJavaImage,
-		autoInstrumentationNodeJSImage:      o.autoInstrumentationNodeJSImage,
-		autoInstrumentationPythonImage:      o.autoInstrumentationPythonImage,
-		autoInstrumentationDotNetImage:      o.autoInstrumentationDotNetImage,
-		autoInstrumentationGoImage:          o.autoInstrumentationGoImage,
-		autoInstrumentationApacheHttpdImage: o.autoInstrumentationApacheHttpdImage,
-		autoInstrumentationNginxImage:       o.autoInstrumentationNginxImage,
-		labelsFilter:                        o.labelsFilter,
-		annotationsFilter:                   o.annotationsFilter,
+		enableMultiInstrumentation:               o.enableMultiInstrumentation,
+		enableApacheHttpdInstrumentation:         o.enableApacheHttpdInstrumentation,
+		enableDotNetInstrumentation:              o.enableDotNetInstrumentation,
+		enableGoInstrumentation:                  o.enableGoInstrumentation,
+		enableNginxInstrumentation:               o.enableNginxInstrumentation,
+		enablePythonInstrumentation:              o.enablePythonInstrumentation,
+		enableNodeJSInstrumentation:              o.enableNodeJSInstrumentation,
+		enableJavaInstrumentation:                o.enableJavaInstrumentation,
+		logger:                                   o.logger,
+		autoInstrumentationJavaImage:             o.autoInstrumentationJavaImage,
+		autoInstrumentationNodeJSImage:           o.autoInstrumentationNodeJSImage,
+		autoInstrumentationPythonImage:           o.autoInstrumentationPythonImage,
+		autoInstrumentationDotNetImage:           o.autoInstrumentationDotNetImage,
+		autoInstrumentationGoImage:               o.autoInstrumentationGoImage,
+		autoInstrumentationApacheHttpdImage:      o.autoInstrumentationApacheHttpdImage,
+		autoInstrumentationNginxImage:            o.autoInstrumentationNginxImage,
+		autoInstrumentationOtelCollectorEndpoint: o.autoInstrumentationOtelCollectorEndpoint,
+		labelsFilter:                             o.labelsFilter,
+		annotationsFilter:                        o.annotationsFilter,
 	}
 }
 
@@ -126,6 +128,10 @@ func (c *Config) EnableNodeJSAutoInstrumentation() bool {
 // AutoInstrumentationJavaImage returns OpenTelemetry Java auto-instrumentation container image.
 func (c *Config) AutoInstrumentationJavaImage() string {
 	return c.autoInstrumentationJavaImage
+}
+
+func (c *Config) AutoInstrumentationOtelCollectorEndpoint() string {
+	return c.autoInstrumentationOtelCollectorEndpoint
 }
 
 // AutoInstrumentationNodeJSImage returns OpenTelemetry NodeJS auto-instrumentation container image.

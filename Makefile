@@ -2,18 +2,8 @@
 VERSION ?= $(shell git describe --tags | sed 's/^v//')
 VERSION_DATE ?= $(shell date -u +'%Y-%m-%dT%H:%M:%SZ')
 VERSION_PKG ?= github.com/otel-warez/whitegloves-operator/internal/version
-OTELCOL_VERSION ?= "$(shell grep -v '\#' versions.txt | grep opentelemetry-collector | awk -F= '{print $$2}')"
-OPERATOR_VERSION ?= "$(shell grep -v '\#' versions.txt | grep operator= | awk -F= '{print $$2}')"
-OPERATOR_OPAMP_BRIDGE_VERSION ?= "$(shell grep -v '\#' versions.txt | grep operator-opamp-bridge | awk -F= '{print $$2}')"
-AUTO_INSTRUMENTATION_JAVA_VERSION ?= "$(shell grep -v '\#' versions.txt | grep autoinstrumentation-java | awk -F= '{print $$2}')"
-AUTO_INSTRUMENTATION_NODEJS_VERSION ?= "$(shell grep -v '\#' versions.txt | grep autoinstrumentation-nodejs | awk -F= '{print $$2}')"
-AUTO_INSTRUMENTATION_PYTHON_VERSION ?= "$(shell grep -v '\#' versions.txt | grep autoinstrumentation-python | awk -F= '{print $$2}')"
-AUTO_INSTRUMENTATION_DOTNET_VERSION ?= "$(shell grep -v '\#' versions.txt | grep autoinstrumentation-dotnet | awk -F= '{print $$2}')"
-AUTO_INSTRUMENTATION_GO_VERSION ?= "$(shell grep -v '\#' versions.txt | grep autoinstrumentation-go | awk -F= '{print $$2}')"
-AUTO_INSTRUMENTATION_APACHE_HTTPD_VERSION ?= "$(shell grep -v '\#' versions.txt | grep autoinstrumentation-apache-httpd | awk -F= '{print $$2}')"
-AUTO_INSTRUMENTATION_NGINX_VERSION ?= "$(shell grep -v '\#' versions.txt | grep autoinstrumentation-nginx | awk -F= '{print $$2}')"
 COMMON_LDFLAGS ?= -s -w
-OPERATOR_LDFLAGS ?= -X ${VERSION_PKG}.version=${VERSION} -X ${VERSION_PKG}.buildDate=${VERSION_DATE} -X ${VERSION_PKG}.autoInstrumentationJava=${AUTO_INSTRUMENTATION_JAVA_VERSION} -X ${VERSION_PKG}.autoInstrumentationNodeJS=${AUTO_INSTRUMENTATION_NODEJS_VERSION} -X ${VERSION_PKG}.autoInstrumentationPython=${AUTO_INSTRUMENTATION_PYTHON_VERSION} -X ${VERSION_PKG}.autoInstrumentationDotNet=${AUTO_INSTRUMENTATION_DOTNET_VERSION} -X ${VERSION_PKG}.autoInstrumentationGo=${AUTO_INSTRUMENTATION_GO_VERSION} -X ${VERSION_PKG}.autoInstrumentationApacheHttpd=${AUTO_INSTRUMENTATION_APACHE_HTTPD_VERSION} -X ${VERSION_PKG}.autoInstrumentationNginx=${AUTO_INSTRUMENTATION_NGINX_VERSION}
+OPERATOR_LDFLAGS ?= -X ${VERSION_PKG}.version=${VERSION} -X ${VERSION_PKG}.buildDate=${VERSION_DATE}
 ARCH ?= $(shell go env GOARCH)
 ifeq ($(shell uname), Darwin)
   SED_INPLACE := sed -i ''
@@ -22,14 +12,11 @@ else
 endif
 
 # Image URL to use all building/pushing image targets
-DOCKER_USER ?= open-telemetry
-IMG_PREFIX ?= ghcr.io/${DOCKER_USER}/opentelemetry-operator
-IMG_REPO ?= opentelemetry-operator
+DOCKER_USER ?= otel-warez
+IMG_PREFIX ?= ghcr.io/${DOCKER_USER}/whitegloves-operator
+IMG_REPO ?= whitegloves-operator
 IMG ?= ${IMG_PREFIX}/${IMG_REPO}:${VERSION}
 BUNDLE_IMG ?= ${IMG_PREFIX}/${IMG_REPO}-bundle:${VERSION}
-
-OPERATOROPAMPBRIDGE_IMG_REPO ?= operator-opamp-bridge
-OPERATOROPAMPBRIDGE_IMG ?= ${IMG_PREFIX}/${OPERATOROPAMPBRIDGE_IMG_REPO}:$(addprefix v,${VERSION})
 
 BRIDGETESTSERVER_IMG_REPO ?= e2e-test-app-bridge-server
 BRIDGETESTSERVER_IMG ?= ${IMG_PREFIX}/${BRIDGETESTSERVER_IMG_REPO}:ve2e
@@ -163,64 +150,6 @@ add-instrumentation-params:
 add-multi-instrumentation-params:
 	@$(MAKE) add-operator-arg OPERATOR_ARG=--enable-multi-instrumentation
 
-.PHONY: add-image-opampbridge
-add-image-opampbridge:
-	@$(MAKE) add-operator-arg OPERATOR_ARG=--operator-opamp-bridge-image=$(OPERATOROPAMPBRIDGE_IMG)
-
-.PHONY: add-rbac-permissions-to-operator
-add-rbac-permissions-to-operator: manifests kustomize
-	# Kustomize only allows patches in the folder where the kustomization is located
-	# This folder is ignored by .gitignore
-	mkdir -p config/rbac/extra-permissions-operator
-	cp -r tests/e2e-automatic-rbac/extra-permissions-operator/* config/rbac/extra-permissions-operator
-	cd config/rbac && $(KUSTOMIZE) edit add patch --kind ClusterRole --name manager-role --path extra-permissions-operator/clusterresourcequotas.yaml
-	cd config/rbac && $(KUSTOMIZE) edit add patch --kind ClusterRole --name manager-role --path extra-permissions-operator/cronjobs.yaml
-	cd config/rbac && $(KUSTOMIZE) edit add patch --kind ClusterRole --name manager-role --path extra-permissions-operator/daemonsets.yaml
-	cd config/rbac && $(KUSTOMIZE) edit add patch --kind ClusterRole --name manager-role --path extra-permissions-operator/events.yaml
-	cd config/rbac && $(KUSTOMIZE) edit add patch --kind ClusterRole --name manager-role --path extra-permissions-operator/extensions.yaml
-	cd config/rbac && $(KUSTOMIZE) edit add patch --kind ClusterRole --name manager-role --path extra-permissions-operator/namespaces.yaml
-	cd config/rbac && $(KUSTOMIZE) edit add patch --kind ClusterRole --name manager-role --path extra-permissions-operator/namespaces-status.yaml
-	cd config/rbac && $(KUSTOMIZE) edit add patch --kind ClusterRole --name manager-role --path extra-permissions-operator/nodes.yaml
-	cd config/rbac && $(KUSTOMIZE) edit add patch --kind ClusterRole --name manager-role --path extra-permissions-operator/nodes-proxy.yaml
-	cd config/rbac && $(KUSTOMIZE) edit add patch --kind ClusterRole --name manager-role --path extra-permissions-operator/nodes-spec.yaml
-	cd config/rbac && $(KUSTOMIZE) edit add patch --kind ClusterRole --name manager-role --path extra-permissions-operator/pod-status.yaml
-	cd config/rbac && $(KUSTOMIZE) edit add patch --kind ClusterRole --name manager-role --path extra-permissions-operator/rbac.yaml
-	cd config/rbac && $(KUSTOMIZE) edit add patch --kind ClusterRole --name manager-role --path extra-permissions-operator/replicaset.yaml
-	cd config/rbac && $(KUSTOMIZE) edit add patch --kind ClusterRole --name manager-role --path extra-permissions-operator/replicationcontrollers.yaml
-	cd config/rbac && $(KUSTOMIZE) edit add patch --kind ClusterRole --name manager-role --path extra-permissions-operator/resourcequotas.yaml
-
-# Deploy controller in the current Kubernetes context, configured in ~/.kube/config
-.PHONY: deploy
-deploy: set-image-controller
-	$(KUSTOMIZE) build config/default | kubectl apply -f -
-	go run hack/check-operator-ready.go 300
-
-# Undeploy controller in the current Kubernetes context, configured in ~/.kube/config
-.PHONY: undeploy
-undeploy: set-image-controller
-	$(KUSTOMIZE) build config/default | kubectl delete --ignore-not-found=$(ignore-not-found) -f -
-
-# Generates the released manifests
-.PHONY: release-artifacts
-release-artifacts: set-image-controller
-	mkdir -p dist
-	$(KUSTOMIZE) build config/default -o dist/opentelemetry-operator.yaml
-	$(KUSTOMIZE) build config/overlays/openshift -o dist/opentelemetry-operator-openshift.yaml
-
-# Generate manifests e.g. CRD, RBAC etc.
-.PHONY: manifests
-manifests: controller-gen
-	$(CONTROLLER_GEN) $(CRD_OPTIONS) rbac:roleName=manager-role webhook paths="./..." output:crd:artifacts:config=${MANIFEST_DIR}
-
-# Run tests
-# setup-envtest uses KUBEBUILDER_ASSETS which points to a directory with binaries (api-server, etcd and kubectl)
-.PHONY: test
-test: envtest
-	KUBEBUILDER_ASSETS="$(shell $(ENVTEST) use $(KUBE_VERSION) -p path)" go test ${GOTEST_OPTS} ./...
-
-.PHONY: precommit
-precommit: generate fmt vet lint test ensure-generate-is-noop reset
-
 # Run go fmt against code
 .PHONY: fmt
 fmt:
@@ -240,86 +169,6 @@ lint: golangci-lint
 .PHONY: generate
 generate: controller-gen
 
-# end-to-tests
-.PHONY: e2e
-e2e: chainsaw
-	$(CHAINSAW) test --test-dir ./tests/e2e
-
-# e2e-native-sidecar
-# NOTE: make sure the k8s featuregate "SidecarContainers" is set to true.
-# NOTE: make sure the operator featuregate "operator.sidecarcontainers.native" is enabled.
-.PHONY: e2e-native-sidecar
-e2e-native-sidecar: chainsaw
-	$(CHAINSAW) test --test-dir ./tests/e2e-native-sidecar
-
-# end-to-end-test for testing automatic RBAC creation
-.PHONY: e2e-automatic-rbac
-e2e-automatic-rbac: chainsaw
-	$(CHAINSAW) test --test-dir ./tests/e2e-automatic-rbac
-
-# end-to-end-test for testing autoscale
-.PHONY: e2e-autoscale
-e2e-autoscale: chainsaw
-	$(CHAINSAW) test --test-dir ./tests/e2e-autoscale
-
-# instrumentation end-to-tests
-.PHONY: e2e-instrumentation
-e2e-instrumentation: chainsaw
-	$(CHAINSAW) test --test-dir ./tests/e2e-instrumentation
-
-.PHONY: e2e-log-operator
-e2e-log-operator:
-	kubectl get pod -n opentelemetry-operator-system | grep "opentelemetry-operator" | awk '{print $$1}' | xargs -I {} kubectl logs -n opentelemetry-operator-system {} manager
-	kubectl get deploy -A
-
-# end-to-tests for multi-instrumentation
-.PHONY: e2e-multi-instrumentation
-e2e-multi-instrumentation: chainsaw
-	$(CHAINSAW) test --test-dir ./tests/e2e-multi-instrumentation
-
-# OpAMPBridge CR end-to-tests
-.PHONY: e2e-opampbridge
-e2e-opampbridge: chainsaw
-	$(CHAINSAW) test --test-dir ./tests/e2e-opampbridge
-
-# end-to-end-test for testing pdb support
-.PHONY: e2e-pdb
-e2e-pdb: chainsaw
-	$(CHAINSAW) test --test-dir ./tests/e2e-pdb
-
-# end-to-end-test for PrometheusCR E2E tests
-.PHONY: e2e-prometheuscr
-e2e-prometheuscr: chainsaw
-	$(CHAINSAW) test --test-dir ./tests/e2e-prometheuscr
-
-.PHONY: add-certmanager-permissions
-add-certmanager-permissions: 
-	# Kustomize only allows patches in the folder where the kustomization is located
-	# This folder is ignored by .gitignore
-	cp -r tests/e2e-ta-collector-mtls/certmanager-permissions config/rbac/certmanager-permissions
-	cd config/rbac && $(KUSTOMIZE) edit add patch --kind ClusterRole --name manager-role --path certmanager-permissions/certmanager.yaml
-
-# end-to-end-test for Annotations/Labels Filters
-.PHONY: e2e-metadata-filters
-e2e-metadata-filters: chainsaw
-	$(CHAINSAW) test --test-dir ./tests/e2e-metadata-filters
-
-# end-to-end-test for testing upgrading
-.PHONY: e2e-upgrade
-e2e-upgrade: undeploy chainsaw
-	kubectl apply -f ./tests/e2e-upgrade/upgrade-test/opentelemetry-operator-v0.86.0.yaml
-	go run hack/check-operator-ready.go
-	$(CHAINSAW) test --test-dir ./tests/e2e-upgrade
-
-.PHONY: prepare-e2e
-prepare-e2e: chainsaw set-image-controller container container-bridge-test-server start-kind cert-manager install-metrics-server load-image-all deploy
-
-.PHONY: scorecard-tests
-scorecard-tests: operator-sdk
-	$(OPERATOR_SDK) scorecard -w=5m bundle/community || (echo "scorecard test for community bundle failed" && exit 1)
-	$(OPERATOR_SDK) scorecard -w=5m bundle/openshift || (echo "scorecard test for openshift bundle failed" && exit 1)
-
-
 # Build the container image, used only for local dev purposes
 # buildx is used to ensure same results for arm based systems (m1/2 chips)
 .PHONY: container
@@ -327,59 +176,12 @@ container: GOOS = linux
 container: manager
 	docker build --load -t ${IMG} .
 
-# Push the container image, used only for local dev purposes
-.PHONY: container-push
-container-push:
-	docker push ${IMG}
-
-.PHONY: container-bridge-test-server
-container-bridge-test-server: GOOS = linux
-container-bridge-test-server:
-	docker build --load -t ${BRIDGETESTSERVER_IMG} tests/test-e2e-apps/bridge-server
-
-.PHONY: container-must-gather
-container-must-gather: GOOS = linux
-container-must-gather: must-gather
-	docker build -f cmd/gather/Dockerfile --load -t ${MUSTGATHER_IMG} .
-
-.PHONY: container-must-gather-push
-container-must-gather-push:
-	docker push ${MUSTGATHER_IMG}
-
-.PHONY: start-kind
-start-kind: kind
-ifeq (true,$(START_KIND_CLUSTER))
-	$(KIND) create cluster --name $(KIND_CLUSTER_NAME) --config $(KIND_CONFIG) || true
-endif
-
 .PHONY: install-metrics-server
 install-metrics-server:
 	./hack/install-metrics-server.sh
 
 .PHONY: load-image-all
 load-image-all: load-image-operator
-
-.PHONY: load-image-operator
-load-image-operator: container kind
-ifeq (true,$(START_KIND_CLUSTER))
-	$(KIND) load --name $(KIND_CLUSTER_NAME) docker-image $(IMG)
-else
-	$(MAKE) container-push
-endif
-
-.PHONY: load-image-bridge-test-server
-load-image-bridge-test-server: container-bridge-test-server kind
-	$(KIND) load --name $(KIND_CLUSTER_NAME) docker-image ${BRIDGETESTSERVER_IMG}
-
-.PHONY: load-image-operator-opamp-bridge
-load-image-operator-opamp-bridge: container-operator-opamp-bridge kind
-	$(KIND) load --name $(KIND_CLUSTER_NAME) docker-image ${OPERATOROPAMPBRIDGE_IMG}
-
-.PHONY: cert-manager
-cert-manager: cmctl
-	# Consider using cmctl to install the cert-manager once install command is not experimental
-	kubectl apply --validate=false -f https://github.com/jetstack/cert-manager/releases/download/v${CERTMANAGER_VERSION}/cert-manager.yaml
-	$(CMCTL) check api --wait=5m
 
 PROJECT_DIR := $(shell dirname $(abspath $(lastword $(MAKEFILE_LIST))))
 CMCTL = $(shell pwd)/bin/cmctl
@@ -465,162 +267,3 @@ GOBIN=$(PROJECT_DIR)/bin go install $(2) ;\
 rm -rf $$TMP_DIR ;\
 }
 endef
-
-OPERATOR_SDK = $(shell pwd)/bin/operator-sdk
-.PHONY: operator-sdk
-operator-sdk: $(LOCALBIN)
-	@{ \
-	set -e ;\
-	if (`pwd`/bin/operator-sdk version | grep ${OPERATOR_SDK_VERSION}) > /dev/null 2>&1 ; then \
-		exit 0; \
-	fi ;\
-	[ -d bin ] || mkdir bin ;\
-	curl -L -o $(OPERATOR_SDK) https://github.com/operator-framework/operator-sdk/releases/download/v${OPERATOR_SDK_VERSION}/operator-sdk_`go env GOOS`_`go env GOARCH`;\
-	chmod +x $(OPERATOR_SDK) ;\
-	}
-
-# Generate bundle manifests and metadata, then validate generated files.
-.PHONY: generate-bundle
-generate-bundle: kustomize operator-sdk manifests set-image-controller api-docs
-	sed -e 's/minKubeVersion: .*/minKubeVersion: $(MIN_KUBERNETES_VERSION)/' config/manifests/$(BUNDLE_VARIANT)/bases/opentelemetry-operator.clusterserviceversion.yaml
-
-	$(OPERATOR_SDK) generate kustomize manifests -q --input-dir $(MANIFESTS_DIR) --output-dir $(MANIFESTS_DIR)
-	cd $(BUNDLE_DIR) && cp ../../PROJECT . && $(KUSTOMIZE) build ../../$(MANIFESTS_DIR) | $(OPERATOR_SDK) generate bundle $(BUNDLE_BUILD_GEN_FLAGS) && rm PROJECT
-
-	# Workaround for https://github.com/operator-framework/operator-sdk/issues/4992
-	echo "" >> bundle/$(BUNDLE_VARIANT)/bundle.Dockerfile
-	echo "LABEL com.redhat.openshift.versions=v$(MIN_OPENSHIFT_VERSION)" >> bundle/$(BUNDLE_VARIANT)/bundle.Dockerfile
-	echo "" >> bundle/$(BUNDLE_VARIANT)/metadata/annotations.yaml
-	echo "  com.redhat.openshift.versions: v$(MIN_OPENSHIFT_VERSION)" >> bundle/$(BUNDLE_VARIANT)/metadata/annotations.yaml
-
-	$(OPERATOR_SDK) bundle validate $(BUNDLE_DIR)
-	./hack/ignore-createdAt-bundle.sh
-
-.PHONY: bundle
-bundle:
-	BUNDLE_VARIANT=community VERSION=$(VERSION) $(MAKE) generate-bundle
-	BUNDLE_VARIANT=openshift VERSION=$(VERSION) $(MAKE) generate-bundle
-
-
-.PHONY: reset
-reset: kustomize operator-sdk manifests
-	$(MAKE) VERSION=${OPERATOR_VERSION} set-image-controller
-	$(OPERATOR_SDK)  generate kustomize manifests -q --input-dir config/manifests/community --output-dir config/manifests/community
-	$(OPERATOR_SDK)  generate kustomize manifests -q --input-dir config/manifests/openshift --output-dir config/manifests/openshift
-
-	$(KUSTOMIZE) build config/manifests/community | $(OPERATOR_SDK) generate bundle $(BUNDLE_GEN_FLAGS) --kustomize-dir config/manifests/community --output-dir bundle/community
-	$(KUSTOMIZE) build config/manifests/openshift |$(OPERATOR_SDK) generate bundle $(BUNDLE_GEN_FLAGS) --kustomize-dir config/manifests/openshift --output-dir bundle/openshift
-
-	# Workaround for https://github.com/operator-framework/operator-sdk/issues/4992
-	echo "" >> bundle/community/metadata/annotations.yaml
-	echo "  com.redhat.openshift.versions: v$(MIN_OPENSHIFT_VERSION)" >> bundle/community/metadata/annotations.yaml
-	echo "" >> bundle/openshift/metadata/annotations.yaml
-	echo "  com.redhat.openshift.versions: v$(MIN_OPENSHIFT_VERSION)" >> bundle/openshift/metadata/annotations.yaml
-
-	$(OPERATOR_SDK) bundle validate ./bundle/community
-	$(OPERATOR_SDK) bundle validate ./bundle/openshift
-	rm bundle.Dockerfile
-	git checkout config/manager/kustomization.yaml
-	./hack/ignore-createdAt-bundle.sh
-
-# Build the bundle image, used only for local dev purposes
-.PHONY: bundle-build
-bundle-build:
-	docker build --load -f ./bundle/$(BUNDLE_VARIANT)/bundle.Dockerfile -t $(BUNDLE_IMG) ./bundle/$(BUNDLE_VARIANT)
-
-.PHONY: bundle-push
-bundle-push:
-	docker push $(BUNDLE_IMG)
-
-.PHONY: api-docs
-api-docs: crdoc kustomize
-	@{ \
-	set -e ;\
-	TMP_MANIFEST_DIR=$$(mktemp -d) ; \
-	cp -r config/crd/* $$TMP_MANIFEST_DIR; \
-	$(MAKE) CRD_OPTIONS=$(CRD_OPTIONS),maxDescLen=1200 MANIFEST_DIR=$$TMP_MANIFEST_DIR/bases manifests ;\
-	TMP_DIR=$$(mktemp -d) ; \
-	$(KUSTOMIZE) build $$TMP_MANIFEST_DIR -o $$TMP_DIR/crd-output.yaml ;\
-	$(CRDOC) --resources $$TMP_DIR/crd-output.yaml --output docs/api.md ;\
-	}
-
-
-.PHONY: chlog-install
-chlog-install: $(CHLOGGEN)
-$(CHLOGGEN): $(LOCALBIN)
-	GOBIN=$(LOCALBIN) go install go.opentelemetry.io/build-tools/chloggen@v0.11.0
-
-FILENAME?=$(shell git branch --show-current)
-.PHONY: chlog-new
-chlog-new: chlog-install
-	$(CHLOGGEN) new --filename $(FILENAME)
-
-.PHONY: chlog-validate
-chlog-validate: chlog-install
-	$(CHLOGGEN) validate
-
-.PHONY: chlog-preview
-chlog-preview: chlog-install
-	$(CHLOGGEN) update --dry
-
-.PHONY: chlog-update
-chlog-update: chlog-install chlog-insert-components
-	$(CHLOGGEN) update --version $(VERSION)
-
-.PHONY: chlog-insert-components
-chlog-insert-components:
-	@echo "### Components" > components.md
-	@echo "" >>components.md
-	@echo "* [OpenTelemetry Collector - v${OTELCOL_VERSION}](https://github.com/open-telemetry/opentelemetry-collector/releases/tag/v${OTELCOL_VERSION})" >>components.md
-	@echo "* [OpenTelemetry Contrib - v${OTELCOL_VERSION}](https://github.com/open-telemetry/opentelemetry-collector-contrib/releases/tag/v${OTELCOL_VERSION})" >>components.md
-	@echo "* [Java auto-instrumentation - v${AUTO_INSTRUMENTATION_JAVA_VERSION}](https://github.com/open-telemetry/opentelemetry-java-instrumentation/releases/tag/v${AUTO_INSTRUMENTATION_JAVA_VERSION})" >>components.md
-	@echo "* [.NET auto-instrumentation - v${AUTO_INSTRUMENTATION_DOTNET_VERSION}](https://github.com/open-telemetry/opentelemetry-dotnet-instrumentation/releases/tag/v${AUTO_INSTRUMENTATION_DOTNET_VERSION})" >>components.md
-	@echo "* [Node.JS - v${AUTO_INSTRUMENTATION_NODEJS_VERSION}](https://github.com/open-telemetry/opentelemetry-js/releases/tag/experimental%2Fv${AUTO_INSTRUMENTATION_NODEJS_VERSION})" >>components.md
-	@echo "* [Python - v${AUTO_INSTRUMENTATION_PYTHON_VERSION}](https://github.com/open-telemetry/opentelemetry-python-contrib/releases/tag/v${AUTO_INSTRUMENTATION_PYTHON_VERSION})" >>components.md
-	@echo "* [Go - ${AUTO_INSTRUMENTATION_GO_VERSION}](https://github.com/open-telemetry/opentelemetry-go-instrumentation/releases/tag/${AUTO_INSTRUMENTATION_GO_VERSION})" >>components.md
-	@echo "* [ApacheHTTPD - ${AUTO_INSTRUMENTATION_APACHE_HTTPD_VERSION}](https://github.com/open-telemetry/opentelemetry-cpp-contrib/releases/tag/webserver%2Fv${AUTO_INSTRUMENTATION_APACHE_HTTPD_VERSION})" >>components.md
-	@echo "* [Nginx - ${AUTO_INSTRUMENTATION_NGINX_VERSION}](https://github.com/open-telemetry/opentelemetry-cpp-contrib/releases/tag/webserver%2Fv${AUTO_INSTRUMENTATION_NGINX_VERSION})" >>components.md
-	@$(SED_INPLACE) '/<!-- next version -->/r ./components.md' CHANGELOG.md
-	@$(SED_INPLACE) '/<!-- next version -->/G' CHANGELOG.md
-	@rm components.md
-
-.PHONY: opm
-OPM = ./bin/opm
-opm: ## Download opm locally if necessary.
-ifeq (,$(wildcard $(OPM)))
-ifeq (,$(shell which opm 2>/dev/null))
-	@{ \
-	set -e ;\
-	mkdir -p $(dir $(OPM)) ;\
-	OS=$(shell go env GOOS) && ARCH=$(shell go env GOARCH) && \
-	curl -sSLo $(OPM) https://github.com/operator-framework/operator-registry/releases/download/v1.28.0/$${OS}-$${ARCH}-opm ;\
-	chmod +x $(OPM) ;\
-	}
-else
-OPM = $(shell which opm)
-endif
-endif
-
-# A comma-separated list of bundle images (e.g. make catalog-build BUNDLE_IMGS=example.com/operator-bundle:v0.1.0,example.com/operator-bundle:v0.2.0).
-# These images MUST exist in a registry and be pull-able.
-BUNDLE_IMGS ?= $(BUNDLE_IMG)
-
-# The image tag given to the resulting catalog image (e.g. make catalog-build CATALOG_IMG=example.com/operator-catalog:v0.2.0).
-CATALOG_IMG ?= ${IMG_PREFIX}/${IMG_REPO}-catalog:${VERSION}
-
-# Set CATALOG_BASE_IMG to an existing catalog image tag to add $BUNDLE_IMGS to that image.
-ifneq ($(origin CATALOG_BASE_IMG), undefined)
-FROM_INDEX_OPT := --from-index $(CATALOG_BASE_IMG)
-endif
-
-# Build a catalog image by adding bundle images to an empty catalog using the operator package manager tool, 'opm'.
-# This recipe invokes 'opm' in 'semver' bundle add mode. For more information on add modes, see:
-# https://github.com/operator-framework/community-operators/blob/7f1438c/docs/packaging-operator.md#updating-your-existing-operator
-.PHONY: catalog-build
-catalog-build: opm bundle-build bundle-push ## Build a catalog image.
-	$(OPM) index add --container-tool docker --mode semver --tag $(CATALOG_IMG) --bundles $(BUNDLE_IMGS) $(FROM_INDEX_OPT)
-
-# Push the catalog image.
-.PHONY: catalog-push
-catalog-push: ## Push a catalog image.
-	docker push $(CATALOG_IMG)

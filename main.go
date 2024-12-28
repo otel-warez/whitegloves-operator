@@ -15,24 +15,15 @@
 package main
 
 import (
-	"context"
 	"crypto/tls"
 	"flag"
 	"fmt"
-	"github.com/otel-warez/whitegloves-operator/internal/instrumentation"
-	"github.com/otel-warez/whitegloves-operator/internal/webhook/podmutation"
 	"os"
 	"regexp"
 	"runtime"
-	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 	"strings"
 	"time"
 
-	otelv1alpha1 "github.com/otel-warez/whitegloves-operator/apis/v1alpha1"
-	"github.com/otel-warez/whitegloves-operator/internal/config"
-	"github.com/otel-warez/whitegloves-operator/internal/constants"
-	instrumentationupgrade "github.com/otel-warez/whitegloves-operator/internal/instrumentation/upgrade"
-	"github.com/otel-warez/whitegloves-operator/internal/version"
 	"github.com/spf13/pflag"
 	"go.uber.org/zap/zapcore"
 	networkingv1 "k8s.io/api/networking/v1"
@@ -45,10 +36,16 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/cache"
 	"sigs.k8s.io/controller-runtime/pkg/healthz"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
-	"sigs.k8s.io/controller-runtime/pkg/manager"
 	metricsserver "sigs.k8s.io/controller-runtime/pkg/metrics/server"
 	"sigs.k8s.io/controller-runtime/pkg/webhook"
-	// +kubebuilder:scaffold:imports
+	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
+
+	otelv1alpha1 "github.com/otel-warez/whitegloves-operator/apis/v1alpha1"
+	"github.com/otel-warez/whitegloves-operator/internal/config"
+	"github.com/otel-warez/whitegloves-operator/internal/constants"
+	"github.com/otel-warez/whitegloves-operator/internal/instrumentation"
+	"github.com/otel-warez/whitegloves-operator/internal/version"
+	"github.com/otel-warez/whitegloves-operator/internal/webhook/podmutation"
 )
 
 var (
@@ -87,38 +84,39 @@ func main() {
 
 	// add flags related to this operator
 	var (
-		metricsAddr                      string
-		probeAddr                        string
-		pprofAddr                        string
-		enableLeaderElection             bool
-		createRBACPermissions            bool
-		createOpenShiftDashboard         bool
-		enableMultiInstrumentation       bool
-		enableApacheHttpdInstrumentation bool
-		enableDotNetInstrumentation      bool
-		enableGoInstrumentation          bool
-		enablePythonInstrumentation      bool
-		enableNginxInstrumentation       bool
-		enableNodeJSInstrumentation      bool
-		enableJavaInstrumentation        bool
-		enableCRMetrics                  bool
-		autoInstrumentationJava          string
-		autoInstrumentationNodeJS        string
-		autoInstrumentationPython        string
-		autoInstrumentationDotNet        string
-		autoInstrumentationApacheHttpd   string
-		autoInstrumentationNginx         string
-		autoInstrumentationGo            string
-		labelsFilter                     []string
-		tmplabelsFilter                  []string
-		annotationsFilter                []string
-		webhookPort                      int
-		tlsOpt                           tlsConfig
-		encodeMessageKey                 string
-		encodeLevelKey                   string
-		encodeTimeKey                    string
-		encodeLevelFormat                string
-		fipsDisabledComponents           string
+		metricsAddr                              string
+		probeAddr                                string
+		pprofAddr                                string
+		enableLeaderElection                     bool
+		createRBACPermissions                    bool
+		createOpenShiftDashboard                 bool
+		enableMultiInstrumentation               bool
+		enableApacheHttpdInstrumentation         bool
+		enableDotNetInstrumentation              bool
+		enableGoInstrumentation                  bool
+		enablePythonInstrumentation              bool
+		enableNginxInstrumentation               bool
+		enableNodeJSInstrumentation              bool
+		enableJavaInstrumentation                bool
+		enableCRMetrics                          bool
+		autoInstrumentationJava                  string
+		autoInstrumentationNodeJS                string
+		autoInstrumentationPython                string
+		autoInstrumentationDotNet                string
+		autoInstrumentationApacheHttpd           string
+		autoInstrumentationNginx                 string
+		autoInstrumentationGo                    string
+		autoInstrumentationOtelCollectorEndpoint string
+		labelsFilter                             []string
+		tmplabelsFilter                          []string
+		annotationsFilter                        []string
+		webhookPort                              int
+		tlsOpt                                   tlsConfig
+		encodeMessageKey                         string
+		encodeLevelKey                           string
+		encodeTimeKey                            string
+		encodeLevelFormat                        string
+		fipsDisabledComponents                   string
 	)
 
 	pflag.StringVar(&metricsAddr, "metrics-addr", ":8080", "The address the metric endpoint binds to.")
@@ -146,6 +144,7 @@ func main() {
 	stringFlagOrEnv(&autoInstrumentationGo, "auto-instrumentation-go-image", "RELATED_IMAGE_AUTO_INSTRUMENTATION_GO", fmt.Sprintf("ghcr.io/open-telemetry/opentelemetry-go-instrumentation/autoinstrumentation-go:%s", v.AutoInstrumentationGo), "The default OpenTelemetry Go instrumentation image. This image is used when no image is specified in the CustomResource.")
 	stringFlagOrEnv(&autoInstrumentationApacheHttpd, "auto-instrumentation-apache-httpd-image", "RELATED_IMAGE_AUTO_INSTRUMENTATION_APACHE_HTTPD", fmt.Sprintf("ghcr.io/open-telemetry/opentelemetry-operator/autoinstrumentation-apache-httpd:%s", v.AutoInstrumentationApacheHttpd), "The default OpenTelemetry Apache HTTPD instrumentation image. This image is used when no image is specified in the CustomResource.")
 	stringFlagOrEnv(&autoInstrumentationNginx, "auto-instrumentation-nginx-image", "RELATED_IMAGE_AUTO_INSTRUMENTATION_NGINX", fmt.Sprintf("ghcr.io/open-telemetry/opentelemetry-operator/autoinstrumentation-apache-httpd:%s", v.AutoInstrumentationNginx), "The default OpenTelemetry Nginx instrumentation image. This image is used when no image is specified in the CustomResource.")
+	stringFlagOrEnv(&autoInstrumentationOtelCollectorEndpoint, "auto-instrumentation-otel-collector-endpoint", "RELATED_IMAGE_AUTO_INSTRUMENTATION_OTEL_COLLECTOR_ENDPOINT", "https://0.0.0.0:4318", "The OpenTelemetry Collector exporter URL.")
 	pflag.StringArrayVar(&labelsFilter, "labels-filter", []string{}, "Labels to filter away from propagating onto deploys. It should be a string array containing patterns, which are literal strings optionally containing a * wildcard character. Example: --labels-filter=.*filter.out will filter out labels that looks like: label.filter.out: true")
 	pflag.StringArrayVar(&tmplabelsFilter, "label", []string{}, "(Deprecated, please use the labels-filter flag) Labels to filter away from propagating onto deploys. It should be a string array containing patterns, which are literal strings optionally containing a * wildcard character. Example: --label=.*filter.out will filter out labels that looks like: label.filter.out: true")
 	pflag.StringArrayVar(&annotationsFilter, "annotations-filter", []string{}, "Annotations to filter away from propagating onto deploys. It should be a string array containing patterns, which are literal strings optionally containing a * wildcard character. Example: --annotations-filter=.*filter.out will filter out annotations that looks like: annotation.filter.out: true")
@@ -270,6 +269,7 @@ func main() {
 		config.WithAutoInstrumentationNodeJSImage(autoInstrumentationNodeJS),
 		config.WithAutoInstrumentationPythonImage(autoInstrumentationPython),
 		config.WithAutoInstrumentationDotNetImage(autoInstrumentationDotNet),
+		config.WithAutoInstrumentationOtelCollectorEndpoint(autoInstrumentationOtelCollectorEndpoint),
 		config.WithAutoInstrumentationGoImage(autoInstrumentationGo),
 		config.WithAutoInstrumentationApacheHttpdImage(autoInstrumentationApacheHttpd),
 		config.WithAutoInstrumentationNginxImage(autoInstrumentationNginx),
@@ -295,12 +295,6 @@ func main() {
 				setupLog.Error(compileErr, "could not compile the regexp pattern for Labels filter")
 			}
 		}
-	}
-
-	err = addDependencies(ctx, mgr, cfg)
-	if err != nil {
-		setupLog.Error(err, "failed to add/run bootstrap dependencies to the controller manager")
-		os.Exit(1)
 	}
 
 	if os.Getenv("ENABLE_WEBHOOKS") != "false" {
@@ -336,24 +330,6 @@ func main() {
 		setupLog.Error(err, "problem running manager")
 		os.Exit(1)
 	}
-}
-
-func addDependencies(_ context.Context, mgr ctrl.Manager, cfg config.Config) error {
-
-	// adds the upgrade mechanism to be executed once the manager is ready
-	err := mgr.Add(manager.RunnableFunc(func(c context.Context) error {
-		u := instrumentationupgrade.NewInstrumentationUpgrade(
-			mgr.GetClient(),
-			ctrl.Log.WithName("instrumentation-upgrade"),
-			mgr.GetEventRecorderFor("opentelemetry-operator"),
-			cfg,
-		)
-		return u.ManagedInstances(c)
-	}))
-	if err != nil {
-		return fmt.Errorf("failed to upgrade Instrumentation instances: %w", err)
-	}
-	return nil
 }
 
 // This function get the option from command argument (tlsConfig), check the validity through k8sapiflag

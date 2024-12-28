@@ -432,40 +432,39 @@ func (pm *instPodMutator) getInstrumentationInstance(ctx context.Context, ns cor
 		return nil, nil
 	}
 
-	if strings.EqualFold(instValue, "true") {
-		return pm.selectInstrumentationInstanceFromNamespace(ctx, ns)
+	otelInst := &v1alpha1.Instrumentation{
+		Spec: v1alpha1.InstrumentationSpec{
+			Exporter: v1alpha1.Exporter{
+				Endpoint: pm.config.AutoInstrumentationOtelCollectorEndpoint(),
+			},
+			Resource:    v1alpha1.Resource{},
+			Propagators: []v1alpha1.Propagator{},
+			Sampler:     v1alpha1.Sampler{},
+			Defaults:    v1alpha1.Defaults{},
+			Java: v1alpha1.Java{
+				Image: pm.config.AutoInstrumentationJavaImage(),
+			},
+			NodeJS: v1alpha1.NodeJS{
+				Image: pm.config.AutoInstrumentationNodeJSImage(),
+			},
+			Python: v1alpha1.Python{
+				Image: pm.config.AutoInstrumentationJavaImage(),
+			},
+			DotNet: v1alpha1.DotNet{
+				Image: pm.config.AutoInstrumentationDotNetImage(),
+			},
+			Go: v1alpha1.Go{
+				Image: pm.config.AutoInstrumentationGoImage(),
+			},
+			ApacheHttpd: v1alpha1.ApacheHttpd{
+				Image: pm.config.AutoInstrumentationApacheHttpdImage(),
+			},
+			Nginx: v1alpha1.Nginx{
+				Image: pm.config.AutoInstrumentationNginxImage(),
+			},
+		},
 	}
-
-	var instNamespacedName types.NamespacedName
-	if instNamespace, instName, namespaced := strings.Cut(instValue, "/"); namespaced {
-		instNamespacedName = types.NamespacedName{Name: instName, Namespace: instNamespace}
-	} else {
-		instNamespacedName = types.NamespacedName{Name: instValue, Namespace: ns.Name}
-	}
-
-	otelInst := &v1alpha1.Instrumentation{}
-	err := pm.Client.Get(ctx, instNamespacedName, otelInst)
-	if err != nil {
-		return nil, err
-	}
-
 	return otelInst, nil
-}
-
-func (pm *instPodMutator) selectInstrumentationInstanceFromNamespace(ctx context.Context, ns corev1.Namespace) (*v1alpha1.Instrumentation, error) {
-	var otelInsts v1alpha1.InstrumentationList
-	if err := pm.Client.List(ctx, &otelInsts, client.InNamespace(ns.Name)); err != nil {
-		return nil, err
-	}
-
-	switch s := len(otelInsts.Items); {
-	case s == 0:
-		return nil, errNoInstancesAvailable
-	case s > 1:
-		return nil, errMultipleInstancesPossible
-	default:
-		return &otelInsts.Items[0], nil
-	}
 }
 
 func (pm *instPodMutator) validateInstrumentations(ctx context.Context, inst languageInstrumentations, podNamespace string) error {
