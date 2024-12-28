@@ -41,3 +41,9 @@ It's always fun to delete 90% of the code of the repository and somehow keep it 
 
 This might help set up a conversation to split the operator into smaller, more focused deliveries.
 
+## OK but what's next
+
+We can discuss on issues:
+* https://github.com/open-telemetry/opentelemetry-operator/issues/3569
+* https://github.com/open-telemetry/opentelemetry-operator/issues/3568
+* https://github.com/open-telemetry/opentelemetry-operator/issues/3567
