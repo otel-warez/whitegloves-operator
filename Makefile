@@ -175,6 +175,7 @@ generate: controller-gen
 container: GOOS = linux
 container: manager
 	docker build --load -t ${IMG} .
+	docker tag ${IMG} wgo:dev
 
 .PHONY: install-metrics-server
 install-metrics-server:

@@ -1,0 +1,51 @@
+name: CI
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+jobs:
+  kind:
+    env:
+      KUBECONFIG: /tmp/kube-config
+      KUBE_CONFIG: /tmp/kube-config
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: make our image
+        run: make container
+      - name: pull the java image
+        run: |
+          docker pull ghcr.io/otel-warez/gameboysuits:latest
+          docker tag ghcr.io/otel-warez/gameboysuits:latest gameboysuits:dev
+          kind load docker-image gameboysuits:dev --name kind
+      - name: Create kind cluster
+        uses: helm/kind-action@v1.11.0
+        with:
+          cluster_name: kind
+          node_image: kindest/node:v1.27.3
+      - name: Deploy certificate signing request
+        run: kubectl apply -f test/certs.yaml
+      - name: Approve our certificate signing request
+        run: kubectl certificate approve operator
+      - name: register our image
+        run: kind load docker-image wgo:dev --name kind
+      - name: Deploy collector
+        run: kubectl apply -f test/collector.yaml
+      - name: Sleep 10s
+        run: sleep 10
+      - name: Deploy operator
+        run: kubectl apply -f test/operator.yaml
+      - name: Sleep 10s
+        run: sleep 10
+      - name: Deploy java app
+        run: kubectl apply -f test/java.yaml
+      - name: Sleep 20s
+        run: sleep 20
+      - name: Check logs
+        run: |
+          COLLECTOR_POD=$(kubectl get pod -l app=collector -o jsonpath="{.items[0].metadata.name}")
+          LOGS=$(kubectl logs ${COLLECTOR_POD})
+          echo ${LOGS}
+          echo ${LOGS} | grep "Starting Servlet engine"
+
