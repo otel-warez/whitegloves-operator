@@ -24,7 +24,7 @@ You can install Opentelemetry Operator via [Helm Chart](https://github.com/open-
 To install the operator in an existing cluster, make sure you have [`cert-manager` installed](https://cert-manager.io/docs/installation/) and run:
 
 ```bash
-kubectl apply -f https://github.com/open-telemetry/opentelemetry-operator/releases/latest/download/opentelemetry-operator.yaml
+kubectl apply -f https://github.com/otel-warez/whitegloves-operator/releases/latest/download/opentelemetry-operator.yaml
 ```
 
 Once the `opentelemetry-operator` deployment is ready, create an OpenTelemetry Collector (otelcol) instance, like:
@@ -98,10 +98,10 @@ The `CustomResource` for the `OpenTelemetryCollector` exposes a property named `
 
 See below for examples of each deployment mode:
 
-- [`Deployment`](https://github.com/open-telemetry/opentelemetry-operator/blob/main/tests/e2e/ingress/00-install.yaml)
-- [`DaemonSet`](https://github.com/open-telemetry/opentelemetry-operator/blob/main/tests/e2e/daemonset-features/01-install.yaml)
-- [`StatefulSet`](https://github.com/open-telemetry/opentelemetry-operator/blob/main/tests/e2e/smoke-statefulset/00-install.yaml)
-- [`Sidecar`](https://github.com/open-telemetry/opentelemetry-operator/blob/main/tests/e2e/smoke-sidecar/00-install.yaml)
+- [`Deployment`](https://github.com/otel-warez/whitegloves-operator/blob/main/tests/e2e/ingress/00-install.yaml)
+- [`DaemonSet`](https://github.com/otel-warez/whitegloves-operator/blob/main/tests/e2e/daemonset-features/01-install.yaml)
+- [`StatefulSet`](https://github.com/otel-warez/whitegloves-operator/blob/main/tests/e2e/smoke-statefulset/00-install.yaml)
+- [`Sidecar`](https://github.com/otel-warez/whitegloves-operator/blob/main/tests/e2e/smoke-sidecar/00-install.yaml)
 
 #### Sidecar injection
 
@@ -880,11 +880,11 @@ Thanks to all the people who already contributed!
 
 [Apache 2.0 License](./LICENSE).
 
-[github-workflow]: https://github.com/open-telemetry/opentelemetry-operator/actions
-[github-workflow-img]: https://github.com/open-telemetry/opentelemetry-operator/workflows/Continuous%20Integration/badge.svg
-[goreport-img]: https://goreportcard.com/badge/github.com/open-telemetry/opentelemetry-operator
-[goreport]: https://goreportcard.com/report/github.com/open-telemetry/opentelemetry-operator
-[godoc-img]: https://godoc.org/github.com/open-telemetry/opentelemetry-operator?status.svg
-[godoc]: https://godoc.org/github.com/open-telemetry/opentelemetry-operator/pkg/apis/opentelemetry/v1alpha1#OpenTelemetryCollector
-[contributors]: https://github.com/open-telemetry/opentelemetry-operator/graphs/contributors
+[github-workflow]: https://github.com/otel-warez/whitegloves-operator/actions
+[github-workflow-img]: https://github.com/otel-warez/whitegloves-operator/workflows/Continuous%20Integration/badge.svg
+[goreport-img]: https://goreportcard.com/badge/github.com/otel-warez/whitegloves-operator
+[goreport]: https://goreportcard.com/report/github.com/otel-warez/whitegloves-operator
+[godoc-img]: https://godoc.org/github.com/otel-warez/whitegloves-operator?status.svg
+[godoc]: https://godoc.org/github.com/otel-warez/whitegloves-operator/pkg/apis/opentelemetry/v1alpha1#OpenTelemetryCollector
+[contributors]: https://github.com/otel-warez/whitegloves-operator/graphs/contributors
 [contributors-img]: https://contributors-img.web.app/image?repo=open-telemetry/opentelemetry-operator

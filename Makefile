@@ -1,10 +1,9 @@
 # Current Operator version
 VERSION ?= $(shell git describe --tags | sed 's/^v//')
 VERSION_DATE ?= $(shell date -u +'%Y-%m-%dT%H:%M:%SZ')
-VERSION_PKG ?= github.com/open-telemetry/opentelemetry-operator/internal/version
+VERSION_PKG ?= github.com/otel-warez/whitegloves-operator/internal/version
 OTELCOL_VERSION ?= "$(shell grep -v '\#' versions.txt | grep opentelemetry-collector | awk -F= '{print $$2}')"
 OPERATOR_VERSION ?= "$(shell grep -v '\#' versions.txt | grep operator= | awk -F= '{print $$2}')"
-TARGETALLOCATOR_VERSION ?= $(shell grep -v '\#' versions.txt | grep targetallocator | awk -F= '{print $$2}')
 OPERATOR_OPAMP_BRIDGE_VERSION ?= "$(shell grep -v '\#' versions.txt | grep operator-opamp-bridge | awk -F= '{print $$2}')"
 AUTO_INSTRUMENTATION_JAVA_VERSION ?= "$(shell grep -v '\#' versions.txt | grep autoinstrumentation-java | awk -F= '{print $$2}')"
 AUTO_INSTRUMENTATION_NODEJS_VERSION ?= "$(shell grep -v '\#' versions.txt | grep autoinstrumentation-nodejs | awk -F= '{print $$2}')"
@@ -14,7 +13,7 @@ AUTO_INSTRUMENTATION_GO_VERSION ?= "$(shell grep -v '\#' versions.txt | grep aut
 AUTO_INSTRUMENTATION_APACHE_HTTPD_VERSION ?= "$(shell grep -v '\#' versions.txt | grep autoinstrumentation-apache-httpd | awk -F= '{print $$2}')"
 AUTO_INSTRUMENTATION_NGINX_VERSION ?= "$(shell grep -v '\#' versions.txt | grep autoinstrumentation-nginx | awk -F= '{print $$2}')"
 COMMON_LDFLAGS ?= -s -w
-OPERATOR_LDFLAGS ?= -X ${VERSION_PKG}.version=${VERSION} -X ${VERSION_PKG}.buildDate=${VERSION_DATE} -X ${VERSION_PKG}.otelCol=${OTELCOL_VERSION} -X ${VERSION_PKG}.targetAllocator=${TARGETALLOCATOR_VERSION} -X ${VERSION_PKG}.operatorOpAMPBridge=${OPERATOR_OPAMP_BRIDGE_VERSION} -X ${VERSION_PKG}.autoInstrumentationJava=${AUTO_INSTRUMENTATION_JAVA_VERSION} -X ${VERSION_PKG}.autoInstrumentationNodeJS=${AUTO_INSTRUMENTATION_NODEJS_VERSION} -X ${VERSION_PKG}.autoInstrumentationPython=${AUTO_INSTRUMENTATION_PYTHON_VERSION} -X ${VERSION_PKG}.autoInstrumentationDotNet=${AUTO_INSTRUMENTATION_DOTNET_VERSION} -X ${VERSION_PKG}.autoInstrumentationGo=${AUTO_INSTRUMENTATION_GO_VERSION} -X ${VERSION_PKG}.autoInstrumentationApacheHttpd=${AUTO_INSTRUMENTATION_APACHE_HTTPD_VERSION} -X ${VERSION_PKG}.autoInstrumentationNginx=${AUTO_INSTRUMENTATION_NGINX_VERSION}
+OPERATOR_LDFLAGS ?= -X ${VERSION_PKG}.version=${VERSION} -X ${VERSION_PKG}.buildDate=${VERSION_DATE} -X ${VERSION_PKG}.autoInstrumentationJava=${AUTO_INSTRUMENTATION_JAVA_VERSION} -X ${VERSION_PKG}.autoInstrumentationNodeJS=${AUTO_INSTRUMENTATION_NODEJS_VERSION} -X ${VERSION_PKG}.autoInstrumentationPython=${AUTO_INSTRUMENTATION_PYTHON_VERSION} -X ${VERSION_PKG}.autoInstrumentationDotNet=${AUTO_INSTRUMENTATION_DOTNET_VERSION} -X ${VERSION_PKG}.autoInstrumentationGo=${AUTO_INSTRUMENTATION_GO_VERSION} -X ${VERSION_PKG}.autoInstrumentationApacheHttpd=${AUTO_INSTRUMENTATION_APACHE_HTTPD_VERSION} -X ${VERSION_PKG}.autoInstrumentationNginx=${AUTO_INSTRUMENTATION_NGINX_VERSION}
 ARCH ?= $(shell go env GOARCH)
 ifeq ($(shell uname), Darwin)
   SED_INPLACE := sed -i ''
@@ -28,9 +27,6 @@ IMG_PREFIX ?= ghcr.io/${DOCKER_USER}/opentelemetry-operator
 IMG_REPO ?= opentelemetry-operator
 IMG ?= ${IMG_PREFIX}/${IMG_REPO}:${VERSION}
 BUNDLE_IMG ?= ${IMG_PREFIX}/${IMG_REPO}-bundle:${VERSION}
-
-TARGETALLOCATOR_IMG_REPO ?= target-allocator
-TARGETALLOCATOR_IMG ?= ${IMG_PREFIX}/${TARGETALLOCATOR_IMG_REPO}:$(addprefix v,${VERSION})
 
 OPERATOROPAMPBRIDGE_IMG_REPO ?= operator-opamp-bridge
 OPERATOROPAMPBRIDGE_IMG ?= ${IMG_PREFIX}/${OPERATOROPAMPBRIDGE_IMG_REPO}:$(addprefix v,${VERSION})
@@ -134,7 +130,7 @@ ensure-generate-is-noop: set-image-controller generate bundle
 	@git diff -s --exit-code docs/api.md || (echo "Build failed: the api.md file has been changed but the generated api.md file isn't up to date. Run 'make api-docs' and update your PR." && git diff && exit 1)
 
 .PHONY: all
-all: manager targetallocator operator-opamp-bridge
+all: manager
 
 # No lint here, as CI runs it separately
 .PHONY: ci
@@ -149,44 +145,15 @@ manager: generate
 must-gather:
 	CGO_ENABLED=0 GOOS=$(GOOS) GOARCH=$(ARCH) go build -o bin/must-gather_${ARCH} -ldflags "${COMMON_LDFLAGS}" ./cmd/gather/main.go
 
-# Build target allocator binary
-.PHONY: targetallocator
-targetallocator:
-	CGO_ENABLED=0 GOOS=$(GOOS) GOARCH=$(ARCH) go build -o cmd/otel-allocator/bin/targetallocator_${ARCH} -ldflags "${COMMON_LDFLAGS}" ./cmd/otel-allocator
-
-# Build opamp bridge binary
-.PHONY: operator-opamp-bridge
-operator-opamp-bridge: generate
-	CGO_ENABLED=0 GOOS=$(GOOS) GOARCH=$(ARCH) go build -o cmd/operator-opamp-bridge/bin/opampbridge_${ARCH} -ldflags "${COMMON_LDFLAGS}" ./cmd/operator-opamp-bridge
-
 # Run against the configured Kubernetes cluster in ~/.kube/config
 .PHONY: run
 run: generate fmt vet manifests
 	ENABLE_WEBHOOKS=$(ENABLE_WEBHOOKS) go run -ldflags "${OPERATOR_LDFLAGS}" ./main.go --zap-devel
 
-# Install CRDs into a cluster
-.PHONY: install
-install: manifests kustomize
-	$(KUSTOMIZE) build config/crd | kubectl apply -f -
-
-# Uninstall CRDs from a cluster
-.PHONY: uninstall
-uninstall: manifests kustomize
-	$(KUSTOMIZE) build config/crd | kubectl delete --ignore-not-found=$(ignore-not-found) -f -
-
-# Set the controller image parameters
-.PHONY: set-image-controller
-set-image-controller: manifests kustomize
-	cd config/manager && $(KUSTOMIZE) edit set image controller=${IMG}
-
 .PHONY: add-operator-arg
 add-operator-arg: PATCH = [{"op":"add","path":"/spec/template/spec/containers/0/args/-","value":"$(OPERATOR_ARG)"}]
 add-operator-arg: manifests kustomize
 	cd config/manager && $(KUSTOMIZE) edit add patch --kind Deployment --patch '$(PATCH)'
-
-.PHONY: add-image-targetallocator
-add-image-targetallocator:
-	@$(MAKE) add-operator-arg OPERATOR_ARG=--target-allocator-image=$(TARGETALLOCATOR_IMG)
 
 .PHONY: add-instrumentation-params
 add-instrumentation-params:
@@ -221,11 +188,6 @@ add-rbac-permissions-to-operator: manifests kustomize
 	cd config/rbac && $(KUSTOMIZE) edit add patch --kind ClusterRole --name manager-role --path extra-permissions-operator/replicaset.yaml
 	cd config/rbac && $(KUSTOMIZE) edit add patch --kind ClusterRole --name manager-role --path extra-permissions-operator/replicationcontrollers.yaml
 	cd config/rbac && $(KUSTOMIZE) edit add patch --kind ClusterRole --name manager-role --path extra-permissions-operator/resourcequotas.yaml
-
-.PHONY: enable-targetallocator-cr
-enable-targetallocator-cr:
-	@$(MAKE) add-operator-arg OPERATOR_ARG='--feature-gates=operator.collector.targetallocatorcr'
-	cd config/crd && $(KUSTOMIZE) edit add resource bases/opentelemetry.io_targetallocators.yaml
 
 # Deploy controller in the current Kubernetes context, configured in ~/.kube/config
 .PHONY: deploy
@@ -277,7 +239,6 @@ lint: golangci-lint
 # Generate code
 .PHONY: generate
 generate: controller-gen
-	$(CONTROLLER_GEN) object:headerFile="hack/boilerplate.go.txt" paths="./..."
 
 # end-to-tests
 .PHONY: e2e
@@ -331,27 +292,12 @@ e2e-pdb: chainsaw
 e2e-prometheuscr: chainsaw
 	$(CHAINSAW) test --test-dir ./tests/e2e-prometheuscr
 
-# Target allocator end-to-tests
-.PHONY: e2e-targetallocator
-e2e-targetallocator: chainsaw
-	$(CHAINSAW) test --test-dir ./tests/e2e-targetallocator
-
-# Target allocator CR end-to-tests
-.PHONY: e2e-targetallocator-cr
-e2e-targetallocator-cr: chainsaw
-	$(CHAINSAW) test --test-dir ./tests/e2e-targetallocator-cr
-
 .PHONY: add-certmanager-permissions
 add-certmanager-permissions: 
 	# Kustomize only allows patches in the folder where the kustomization is located
 	# This folder is ignored by .gitignore
 	cp -r tests/e2e-ta-collector-mtls/certmanager-permissions config/rbac/certmanager-permissions
 	cd config/rbac && $(KUSTOMIZE) edit add patch --kind ClusterRole --name manager-role --path certmanager-permissions/certmanager.yaml
-
-# Target allocator collector mTLS end-to-tests
-.PHONY: e2e-ta-collector-mtls
-e2e-ta-collector-mtls: chainsaw
-	$(CHAINSAW) test --test-dir ./tests/e2e-ta-collector-mtls
 
 # end-to-end-test for Annotations/Labels Filters
 .PHONY: e2e-metadata-filters
@@ -366,7 +312,7 @@ e2e-upgrade: undeploy chainsaw
 	$(CHAINSAW) test --test-dir ./tests/e2e-upgrade
 
 .PHONY: prepare-e2e
-prepare-e2e: chainsaw set-image-controller add-image-targetallocator add-image-opampbridge container container-target-allocator container-operator-opamp-bridge container-bridge-test-server start-kind cert-manager install-metrics-server install-targetallocator-prometheus-crds load-image-all deploy
+prepare-e2e: chainsaw set-image-controller container container-bridge-test-server start-kind cert-manager install-metrics-server load-image-all deploy
 
 .PHONY: scorecard-tests
 scorecard-tests: operator-sdk
@@ -385,24 +331,6 @@ container: manager
 .PHONY: container-push
 container-push:
 	docker push ${IMG}
-
-.PHONY: container-target-allocator-push
-container-target-allocator-push:
-	docker push ${TARGETALLOCATOR_IMG}
-
-.PHONY: container-operator-opamp-bridge-push
-container-operator-opamp-bridge-push:
-	docker push ${OPERATOROPAMPBRIDGE_IMG}
-
-.PHONY: container-target-allocator
-container-target-allocator: GOOS = linux
-container-target-allocator: targetallocator
-	docker build --load -t ${TARGETALLOCATOR_IMG} cmd/otel-allocator
-
-.PHONY: container-operator-opamp-bridge
-container-operator-opamp-bridge: GOOS = linux
-container-operator-opamp-bridge: operator-opamp-bridge
-	docker build --load -t ${OPERATOROPAMPBRIDGE_IMG} cmd/operator-opamp-bridge
 
 .PHONY: container-bridge-test-server
 container-bridge-test-server: GOOS = linux
@@ -428,13 +356,8 @@ endif
 install-metrics-server:
 	./hack/install-metrics-server.sh
 
-# This only installs the CRDs Target Allocator supports
-.PHONY: install-targetallocator-prometheus-crds
-install-targetallocator-prometheus-crds:
-	./hack/install-targetallocator-prometheus-crds.sh
-
 .PHONY: load-image-all
-load-image-all: load-image-operator load-image-target-allocator load-image-operator-opamp-bridge load-image-bridge-test-server
+load-image-all: load-image-operator
 
 .PHONY: load-image-operator
 load-image-operator: container kind
@@ -442,14 +365,6 @@ ifeq (true,$(START_KIND_CLUSTER))
 	$(KIND) load --name $(KIND_CLUSTER_NAME) docker-image $(IMG)
 else
 	$(MAKE) container-push
-endif
-
-.PHONY: load-image-target-allocator
-load-image-target-allocator: container-target-allocator kind
-ifeq (true,$(START_KIND_CLUSTER))
-	$(KIND) load --name $(KIND_CLUSTER_NAME) docker-image $(TARGETALLOCATOR_IMG)
-else
-	$(MAKE) container-target-allocator-push
 endif
 
 .PHONY: load-image-bridge-test-server

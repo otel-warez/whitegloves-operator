@@ -16,37 +16,16 @@
 package config
 
 import (
-	"context"
-	"time"
-
 	"github.com/go-logr/logr"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 
-	"github.com/open-telemetry/opentelemetry-operator/internal/autodetect"
-	"github.com/open-telemetry/opentelemetry-operator/internal/autodetect/certmanager"
-	"github.com/open-telemetry/opentelemetry-operator/internal/autodetect/openshift"
-	"github.com/open-telemetry/opentelemetry-operator/internal/autodetect/prometheus"
-	autoRBAC "github.com/open-telemetry/opentelemetry-operator/internal/autodetect/rbac"
-	"github.com/open-telemetry/opentelemetry-operator/internal/version"
-)
-
-const (
-	defaultAutoDetectFrequency               = 5 * time.Second
-	defaultCollectorConfigMapEntry           = "collector.yaml"
-	defaultTargetAllocatorConfigMapEntry     = "targetallocator.yaml"
-	defaultOperatorOpAMPBridgeConfigMapEntry = "remoteconfiguration.yaml"
+	"github.com/otel-warez/whitegloves-operator/internal/version"
 )
 
 // Config holds the static configuration for this operator.
 type Config struct {
-	autoDetect                          autodetect.AutoDetect
 	logger                              logr.Logger
-	targetAllocatorImage                string
-	operatorOpAMPBridgeImage            string
 	autoInstrumentationPythonImage      string
-	collectorImage                      string
-	collectorConfigMapEntry             string
-	createRBACPermissions               autoRBAC.Availability
 	enableMultiInstrumentation          bool
 	enableApacheHttpdInstrumentation    bool
 	enableDotNetInstrumentation         bool
@@ -64,28 +43,18 @@ type Config struct {
 	autoInstrumentationNodeJSImage      string
 	autoInstrumentationJavaImage        string
 
-	openshiftRoutesAvailability openshift.RoutesAvailability
-	prometheusCRAvailability    prometheus.Availability
-	certManagerAvailability     certmanager.Availability
-	labelsFilter                []string
-	annotationsFilter           []string
+	labelsFilter      []string
+	annotationsFilter []string
 }
 
 // New constructs a new configuration based on the given options.
 func New(opts ...Option) Config {
 	// initialize with the default values
 	o := options{
-		prometheusCRAvailability:          prometheus.NotAvailable,
-		openshiftRoutesAvailability:       openshift.RoutesNotAvailable,
-		createRBACPermissions:             autoRBAC.NotAvailable,
-		certManagerAvailability:           certmanager.NotAvailable,
-		collectorConfigMapEntry:           defaultCollectorConfigMapEntry,
-		targetAllocatorConfigMapEntry:     defaultTargetAllocatorConfigMapEntry,
-		operatorOpAMPBridgeConfigMapEntry: defaultOperatorOpAMPBridgeConfigMapEntry,
-		logger:                            logf.Log.WithName("config"),
-		version:                           version.Get(),
-		enableJavaInstrumentation:         true,
-		annotationsFilter:                 []string{"kubectl.kubernetes.io/last-applied-configuration"},
+		logger:                    logf.Log.WithName("config"),
+		version:                   version.Get(),
+		enableJavaInstrumentation: true,
+		annotationsFilter:         []string{"kubectl.kubernetes.io/last-applied-configuration"},
 	}
 
 	for _, opt := range opts {
@@ -93,9 +62,6 @@ func New(opts ...Option) Config {
 	}
 
 	return Config{
-		autoDetect:                          o.autoDetect,
-		collectorImage:                      o.collectorImage,
-		collectorConfigMapEntry:             o.collectorConfigMapEntry,
 		enableMultiInstrumentation:          o.enableMultiInstrumentation,
 		enableApacheHttpdInstrumentation:    o.enableApacheHttpdInstrumentation,
 		enableDotNetInstrumentation:         o.enableDotNetInstrumentation,
@@ -104,14 +70,7 @@ func New(opts ...Option) Config {
 		enablePythonInstrumentation:         o.enablePythonInstrumentation,
 		enableNodeJSInstrumentation:         o.enableNodeJSInstrumentation,
 		enableJavaInstrumentation:           o.enableJavaInstrumentation,
-		targetAllocatorImage:                o.targetAllocatorImage,
-		operatorOpAMPBridgeImage:            o.operatorOpAMPBridgeImage,
-		targetAllocatorConfigMapEntry:       o.targetAllocatorConfigMapEntry,
-		operatorOpAMPBridgeConfigMapEntry:   o.operatorOpAMPBridgeConfigMapEntry,
 		logger:                              o.logger,
-		openshiftRoutesAvailability:         o.openshiftRoutesAvailability,
-		prometheusCRAvailability:            o.prometheusCRAvailability,
-		certManagerAvailability:             o.certManagerAvailability,
 		autoInstrumentationJavaImage:        o.autoInstrumentationJavaImage,
 		autoInstrumentationNodeJSImage:      o.autoInstrumentationNodeJSImage,
 		autoInstrumentationPythonImage:      o.autoInstrumentationPythonImage,
@@ -121,48 +80,7 @@ func New(opts ...Option) Config {
 		autoInstrumentationNginxImage:       o.autoInstrumentationNginxImage,
 		labelsFilter:                        o.labelsFilter,
 		annotationsFilter:                   o.annotationsFilter,
-		createRBACPermissions:               o.createRBACPermissions,
 	}
-}
-
-// AutoDetect attempts to automatically detect relevant information for this operator.
-func (c *Config) AutoDetect() error {
-	c.logger.V(2).Info("auto-detecting the configuration based on the environment")
-
-	ora, err := c.autoDetect.OpenShiftRoutesAvailability()
-	if err != nil {
-		return err
-	}
-	c.openshiftRoutesAvailability = ora
-	c.logger.V(2).Info("openshift routes detected", "availability", ora)
-
-	pcrd, err := c.autoDetect.PrometheusCRsAvailability()
-	if err != nil {
-		return err
-	}
-	c.prometheusCRAvailability = pcrd
-	c.logger.V(2).Info("prometheus cr detected", "availability", pcrd)
-
-	rAuto, err := c.autoDetect.RBACPermissions(context.Background())
-	if err != nil {
-		c.logger.V(2).Info("the rbac permissions are not set for the operator", "reason", err)
-	}
-	c.createRBACPermissions = rAuto
-	c.logger.V(2).Info("create rbac permissions detected", "availability", rAuto)
-
-	cmAvl, err := c.autoDetect.CertManagerAvailability(context.Background())
-	if err != nil {
-		c.logger.V(2).Info("the cert manager crd and permissions are not set for the operator", "reason", err)
-	}
-	c.certManagerAvailability = cmAvl
-	c.logger.V(2).Info("the cert manager crd and permissions are set for the operator", "availability", cmAvl)
-
-	return nil
-}
-
-// CollectorImage represents the flag to override the OpenTelemetry Collector container image.
-func (c *Config) CollectorImage() string {
-	return c.collectorImage
 }
 
 // EnableMultiInstrumentation is true when the operator supports multi instrumentation.
@@ -203,51 +121,6 @@ func (c *Config) EnablePythonAutoInstrumentation() bool {
 // EnableNodeJSAutoInstrumentation is true when the operator supports dotnet auto instrumentation.
 func (c *Config) EnableNodeJSAutoInstrumentation() bool {
 	return c.enableNodeJSInstrumentation
-}
-
-// CollectorConfigMapEntry represents the configuration file name for the collector. Immutable.
-func (c *Config) CollectorConfigMapEntry() string {
-	return c.collectorConfigMapEntry
-}
-
-// CreateRBACPermissions is true when the operator can create RBAC permissions for SAs running a collector instance. Immutable.
-func (c *Config) CreateRBACPermissions() autoRBAC.Availability {
-	return c.createRBACPermissions
-}
-
-// TargetAllocatorImage represents the flag to override the OpenTelemetry TargetAllocator container image.
-func (c *Config) TargetAllocatorImage() string {
-	return c.targetAllocatorImage
-}
-
-// OperatorOpAMPBridgeImage represents the flag to override the OpAMPBridge container image.
-func (c *Config) OperatorOpAMPBridgeImage() string {
-	return c.operatorOpAMPBridgeImage
-}
-
-// TargetAllocatorConfigMapEntry represents the configuration file name for the TargetAllocator. Immutable.
-func (c *Config) TargetAllocatorConfigMapEntry() string {
-	return c.targetAllocatorConfigMapEntry
-}
-
-// OperatorOpAMPBridgeImageConfigMapEntry represents the configuration file name for the OpAMPBridge. Immutable.
-func (c *Config) OperatorOpAMPBridgeConfigMapEntry() string {
-	return c.operatorOpAMPBridgeConfigMapEntry
-}
-
-// OpenShiftRoutesAvailability represents the availability of the OpenShift Routes API.
-func (c *Config) OpenShiftRoutesAvailability() openshift.RoutesAvailability {
-	return c.openshiftRoutesAvailability
-}
-
-// PrometheusCRAvailability represents the availability of the Prometheus Operator CRDs.
-func (c *Config) PrometheusCRAvailability() prometheus.Availability {
-	return c.prometheusCRAvailability
-}
-
-// CertManagerAvailability represents the availability of the Cert-Manager.
-func (c *Config) CertManagerAvailability() certmanager.Availability {
-	return c.certManagerAvailability
 }
 
 // AutoInstrumentationJavaImage returns OpenTelemetry Java auto-instrumentation container image.

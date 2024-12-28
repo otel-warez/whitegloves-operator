@@ -18,19 +18,13 @@ import (
 	"github.com/go-logr/logr"
 	"go.uber.org/zap/zapcore"
 
-	"github.com/open-telemetry/opentelemetry-operator/internal/autodetect"
-	"github.com/open-telemetry/opentelemetry-operator/internal/autodetect/certmanager"
-	"github.com/open-telemetry/opentelemetry-operator/internal/autodetect/openshift"
-	"github.com/open-telemetry/opentelemetry-operator/internal/autodetect/prometheus"
-	autoRBAC "github.com/open-telemetry/opentelemetry-operator/internal/autodetect/rbac"
-	"github.com/open-telemetry/opentelemetry-operator/internal/version"
+	"github.com/otel-warez/whitegloves-operator/internal/version"
 )
 
 // Option represents one specific configuration option.
 type Option func(c *options)
 
 type options struct {
-	autoDetect                          autodetect.AutoDetect
 	version                             version.Version
 	logger                              logr.Logger
 	autoInstrumentationDotNetImage      string
@@ -40,9 +34,6 @@ type options struct {
 	autoInstrumentationPythonImage      string
 	autoInstrumentationApacheHttpdImage string
 	autoInstrumentationNginxImage       string
-	collectorImage                      string
-	collectorConfigMapEntry             string
-	createRBACPermissions               autoRBAC.Availability
 	enableMultiInstrumentation          bool
 	enableApacheHttpdInstrumentation    bool
 	enableDotNetInstrumentation         bool
@@ -51,42 +42,10 @@ type options struct {
 	enablePythonInstrumentation         bool
 	enableNodeJSInstrumentation         bool
 	enableJavaInstrumentation           bool
-	targetAllocatorConfigMapEntry       string
-	operatorOpAMPBridgeConfigMapEntry   string
-	targetAllocatorImage                string
-	operatorOpAMPBridgeImage            string
-	openshiftRoutesAvailability         openshift.RoutesAvailability
-	prometheusCRAvailability            prometheus.Availability
-	certManagerAvailability             certmanager.Availability
 	labelsFilter                        []string
 	annotationsFilter                   []string
 }
 
-func WithAutoDetect(a autodetect.AutoDetect) Option {
-	return func(o *options) {
-		o.autoDetect = a
-	}
-}
-func WithTargetAllocatorImage(s string) Option {
-	return func(o *options) {
-		o.targetAllocatorImage = s
-	}
-}
-func WithOperatorOpAMPBridgeImage(s string) Option {
-	return func(o *options) {
-		o.operatorOpAMPBridgeImage = s
-	}
-}
-func WithCollectorImage(s string) Option {
-	return func(o *options) {
-		o.collectorImage = s
-	}
-}
-func WithCollectorConfigMapEntry(s string) Option {
-	return func(o *options) {
-		o.collectorConfigMapEntry = s
-	}
-}
 func WithEnableMultiInstrumentation(s bool) Option {
 	return func(o *options) {
 		o.enableMultiInstrumentation = s
@@ -125,16 +84,6 @@ func WithEnablePythonInstrumentation(s bool) Option {
 func WithEnableNodeJSInstrumentation(s bool) Option {
 	return func(o *options) {
 		o.enableNodeJSInstrumentation = s
-	}
-}
-func WithTargetAllocatorConfigMapEntry(s string) Option {
-	return func(o *options) {
-		o.targetAllocatorConfigMapEntry = s
-	}
-}
-func WithOperatorOpAMPBridgeConfigMapEntry(s string) Option {
-	return func(o *options) {
-		o.operatorOpAMPBridgeConfigMapEntry = s
 	}
 }
 func WithLogger(logger logr.Logger) Option {
@@ -187,30 +136,6 @@ func WithAutoInstrumentationApacheHttpdImage(s string) Option {
 func WithAutoInstrumentationNginxImage(s string) Option {
 	return func(o *options) {
 		o.autoInstrumentationNginxImage = s
-	}
-}
-
-func WithOpenShiftRoutesAvailability(os openshift.RoutesAvailability) Option {
-	return func(o *options) {
-		o.openshiftRoutesAvailability = os
-	}
-}
-
-func WithPrometheusCRAvailability(pcrd prometheus.Availability) Option {
-	return func(o *options) {
-		o.prometheusCRAvailability = pcrd
-	}
-}
-
-func WithRBACPermissions(rAuto autoRBAC.Availability) Option {
-	return func(o *options) {
-		o.createRBACPermissions = rAuto
-	}
-}
-
-func WithCertManagerAvailability(cmAvl certmanager.Availability) Option {
-	return func(o *options) {
-		o.certManagerAvailability = cmAvl
 	}
 }
 

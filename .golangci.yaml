@@ -9,12 +9,12 @@ linters-settings:
   goheader:
     template-path: header.txt
   goimports:
-    local-prefixes: github.com/open-telemetry/opentelemetry-operator
+    local-prefixes: github.com/otel-warez/whitegloves-operator
   gci:
     sections:
     - standard
     - default
-    - prefix(github.com/open-telemetry/opentelemetry-operator)
+    - prefix(github.com/otel-warez/whitegloves-operator)
   misspell:
     locale: US
     ignore-words:
