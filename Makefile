@@ -1,5 +1,5 @@
 # Current Operator version
-VERSION ?= $(shell git describe --tags | sed 's/^v//')
+VERSION ?= latest
 VERSION_DATE ?= $(shell date -u +'%Y-%m-%dT%H:%M:%SZ')
 VERSION_PKG ?= github.com/otel-warez/whitegloves-operator/internal/version
 COMMON_LDFLAGS ?= -s -w
